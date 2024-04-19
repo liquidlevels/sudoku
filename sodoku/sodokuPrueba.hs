@@ -24,29 +24,40 @@ generarTablero = do
 imprimirTablero :: Board -> IO ()
 imprimirTablero = mapM_ (putStrLn . intercalate " " . map show) 
 
---funcion que maneja el juego
-jugar :: Board -> IO()
-jugar board = do 
+-- Define la función para verificar si una posición es válida
+esPosicionValida :: Position -> Bool
+esPosicionValida (fila, columna) = fila >= 1 && fila <= 9 && columna >= 1 && columna <= 9
+
+-- Define la función para manejar la entrada inválida
+manejarEntradaInvalida :: IO ()
+manejarEntradaInvalida = putStrLn "Entrada inválida. Por favor, ingrese números del 1 al 9."
+
+-- Modifica la función 'jugar' para verificar la validez de la entrada antes de actualizar el tablero
+jugar :: Board -> IO ()
+jugar board = do
     putStrLn "Introduce una posicion (fila columna valor) o 'exit' para salir: "
     input <- getLine
     if input == "exit" then
         putStrLn "Hasta luego :)"
     else do
         let [fila, columna, valor] = map read $ words input :: [Int]
-            nuevaTabla = actualizarTabla board (fila, columna) valor
-        if esResuelto nuevaTabla then
-            putStrLn "Felicidades! Has resuelto el Sodoku! :)"
+        if esPosicionValida (fila, columna) && valor >= 1 && valor <= 9 then do
+            let nuevaTabla = actualizarTabla board (fila, columna) valor
+            if esResuelto nuevaTabla then
+                putStrLn "Felicidades! Has resuelto el Sodoku! :)"
+            else do
+                putStrLn "Tablero actualizado: "
+                imprimirTablero nuevaTabla
+                jugar nuevaTabla
         else do
-            putStrLn "Tablero actualizado: "
-            imprimirTablero nuevaTabla
-            jugar nuevaTabla
+            manejarEntradaInvalida
+            jugar board
 
 actualizarTabla :: Board -> Position -> Int -> Board
 actualizarTabla tablero (fila, columna) valor =
     if fila < 1 || fila > 9 || columna < 1 || columna > 9 || valor < 1 || valor > 9
-        then do
-            putStrLn "Entrada inválida. Por favor, ingrese números del 1 al 9."
-            return tablero
+        then
+            tablero
         else
             let (arriba, filaActual:abajo) = splitAt (fila - 1) tablero
                 filaModificada = actualizarFila filaActual (columna - 1) valor
