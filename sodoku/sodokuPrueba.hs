@@ -41,9 +41,9 @@ main = do
 generarTablero :: Board -> IO Board
 generarTablero plantilla = do 
     seed <- newStdGen
-    let posicionesVacias = [(fila, columna) | fila <- [1..9], columna <- [1..9], (plantilla !! (fila - 1)) !! (columna - 1) == 0]
+    let posicionesVacias = filterPosicionesVacias plantilla
         numerosAleatorios = take (length posicionesVacias) $ randomRs (1, 9) seed :: [Int]
-        tableroConNumeros = foldl (\tablero ((fila, columna), valor) -> actualizarTabla tablero (fila, columna) valor) plantilla (zip posicionesVacias numerosAleatorios)
+        tableroConNumeros = foldr (\(pos, val) tab -> actualizarTabla tab pos val) plantilla (zip posicionesVacias numerosAleatorios)
     return tableroConNumeros
 
 imprimirTablero :: Board -> IO ()
@@ -60,39 +60,53 @@ manejarEntradaInvalida :: IO ()
 manejarEntradaInvalida = putStrLn "Entrada inválida. Por favor, ingrese números del 1 al 9."
 
 jugar :: Board -> IO ()
-jugar board = do
-    putStrLn "Introduce una posición (fila columna valor) o 'exit' para salir: "
-    input <- getLine
-    if input == "exit" then
-        putStrLn "Hasta luego :)"
-    else do
-        let [fila, columna, valor] = map read $ words input :: [Int]
-        if esPosicionValida (fila, columna) && valor >= 1 && valor <= 9 then do
-            let nuevaTabla = actualizarTabla board (fila, columna) valor
-            if esResuelto nuevaTabla then
-                putStrLn "¡Felicidades! ¡Has resuelto el Sodoku! :)"
-            else do
-                putStrLn "Tablero actualizado: "
-                imprimirTablero nuevaTabla
-                jugar nuevaTabla
-        else do
-            manejarEntradaInvalida
-            jugar board
+jugar board = loop board
+    where
+        loop :: Board -> IO ()
+        loop board = do
+            putStrLn "Introduce una posición (fila columna valor) o 'exit' para salir: "
+            input <- getLine
+            case input of
+                "exit" -> putStrLn "Hasta luego :)"
+                _ -> case parseInput input of
+                        Just (fila, columna, valor) ->
+                            if esPosicionValida (fila, columna) && valor >= 1 && valor <= 9
+                            then do
+                                let nuevaTabla = actualizarTabla board (fila, columna) valor
+                                if esResuelto nuevaTabla
+                                    then putStrLn "¡Felicidades! ¡Has resuelto el Sodoku! :)"
+                                    else do
+                                        putStrLn "Tablero actualizado: "
+                                        imprimirTablero nuevaTabla
+                                        loop nuevaTabla
+                            else do
+                                manejarEntradaInvalida
+                                loop board
+                        Nothing -> do
+                            manejarEntradaInvalida
+                            loop board
+
+        parseInput :: String -> Maybe (Int, Int, Int)
+        parseInput input =
+            case map read $ words input of
+                [fila, columna, valor] -> Just (fila, columna, valor)
+                _ -> Nothing
+
 
 actualizarTabla :: Board -> Position -> Int -> Board
-actualizarTabla tablero (fila, columna) valor =
-    if fila < 1 || fila > 9 || columna < 1 || columna > 9 || valor < 1 || valor > 9
-        then
-            tablero
-        else
-            let (arriba, filaActual:abajo) = splitAt (fila - 1) tablero
-                filaModificada = actualizarFila filaActual (columna - 1) valor
-            in arriba ++ [filaModificada] ++ abajo
+actualizarTabla tablero (fila, columna) valor
+    | fila < 1 || fila > 9 || columna < 1 || columna > 9 || valor < 1 || valor > 9 = tablero
+    | otherwise = actualizaFila fila tablero (actualizaColumna columna valor (tablero !! (fila - 1)))
 
-actualizarFila :: [Int] -> Int -> Int -> [Int]
-actualizarFila fila columna valor =
-    let (izquierda, _:derecha) = splitAt columna fila
-    in izquierda ++ [valor] ++ derecha
+actualizaColumna :: Int -> Int -> [Int] -> [Int]
+actualizaColumna _ _ [] = []
+actualizaColumna 1 valor (_:xs) = valor:xs
+actualizaColumna n valor (x:xs) = x : actualizaColumna (n-1) valor xs
+
+actualizaFila :: Int -> Board -> [Int] -> Board
+actualizaFila _ [] _ = []
+actualizaFila 1 (_:xs) fila = fila : xs
+actualizaFila n (x:xs) fila = x : actualizaFila (n-1) xs fila
 
 esResuelto :: Board -> Bool
 esResuelto tablero = 
@@ -111,4 +125,7 @@ bloques :: Board -> [[Int]]
 bloques tablero = concatMap (agruparBloques . map (chunksOf 3)) (chunksOf 3 tablero)
     where
         agruparBloques bloquesFilas = map concat (transpose bloquesFilas)
+
+filterPosicionesVacias :: Board -> [Position]
+filterPosicionesVacias tablero = [(fila, columna) | fila <- [1..9], columna <- [1..9], (tablero !! (fila - 1)) !! (columna - 1) == 0]
 
