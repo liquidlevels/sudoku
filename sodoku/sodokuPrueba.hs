@@ -1,8 +1,33 @@
+-- | Este módulo implementa un juego de Sudoku simple en Haskell.
+module Sudoku (
+    -- * Tipos de datos
+    Board,      -- Tipo de datos para el tablero de Sudoku
+    Position,   -- Tipo de datos para representar una posición en el tablero
+    
+    -- * Funciones principales
+    main,       -- Función principal que inicia el juego de Sudoku
+    
+    -- * Generación y manipulación del tablero
+    plantillaInicial,   -- Plantilla inicial del tablero
+    plantillaSolucion,  -- Solución de la plantilla inicial
+    generarTablero,     -- Genera un tablero de Sudoku a partir de una plantilla
+    actualizarTabla,    -- Actualiza una tabla de Sudoku con un nuevo valor
+    
+    -- * Impresión del tablero
+    imprimirTablero,    -- Imprime el tablero de Sudoku
+    
+    -- * Juego
+    jugar               -- Función principal que maneja el juego de Sudoku
+) where
+
 import Data.List
 import System.Random
 import Control.Monad (replicateM)
 
+-- | Representa un tablero de Sudoku como una matriz 9x9 de enteros.
 type Board = [[Int]]
+
+-- | Representa una posición en el tablero de Sudoku, dada por fila y columna.
 type Position = (Int, Int)
 
 plantillaInicial :: Board
@@ -31,6 +56,8 @@ plantillaSolucion =
     , [4, 5, 6, 8, 7, 1, 2, 3, 9]
     ]
 
+
+-- | Función principal que inicia el juego de Sudoku.
 main :: IO ()
 main = do
     putStrLn "Bienvenido al juego de Sodoku :) "
@@ -38,6 +65,7 @@ main = do
     imprimirTablero board
     jugar board
 
+-- | Genera un tablero de Sudoku a partir de una plantilla inicial, rellenando los espacios en blanco con números aleatorios.
 generarTablero :: Board -> IO Board
 generarTablero plantilla = do 
     seed <- newStdGen
@@ -46,19 +74,26 @@ generarTablero plantilla = do
         tableroConNumeros = foldr (\(pos, val) tab -> actualizarTabla tab pos val) plantilla (zip posicionesVacias numerosAleatorios)
     return tableroConNumeros
 
+
+-- | Imprime el tablero de Sudoku en la consola.
 imprimirTablero :: Board -> IO ()
 imprimirTablero = mapM_ (putStrLn . intercalate " " . map mostrarCelda)
 
+-- | Convierte un número entero en una cadena de caracteres para mostrarlo en el tablero.
 mostrarCelda :: Int -> String
 mostrarCelda 0 = "_"
 mostrarCelda n = show n
 
+-- | Verifica si una posición en el tablero de Sudoku es válida.
 esPosicionValida :: Position -> Bool
 esPosicionValida (fila, columna) = fila >= 1 && fila <= 9 && columna >= 1 && columna <= 9
 
+
+-- | Maneja una entrada de usuario inválida.
 manejarEntradaInvalida :: IO ()
 manejarEntradaInvalida = putStrLn "Entrada inválida. Por favor, ingrese números del 1 al 9."
 
+-- | Función principal que maneja el juego de Sudoku.
 jugar :: Board -> IO ()
 jugar board = loop board
     where
@@ -93,11 +128,13 @@ jugar board = loop board
                 _ -> Nothing
 
 
+-- | Actualiza el tablero de Sudoku con un nuevo valor en una posición dada.
 actualizarTabla :: Board -> Position -> Int -> Board
 actualizarTabla tablero (fila, columna) valor
     | fila < 1 || fila > 9 || columna < 1 || columna > 9 || valor < 1 || valor > 9 = tablero
     | otherwise = actualizaFila fila tablero (actualizaColumna columna valor (tablero !! (fila - 1)))
 
+<<<<<<< HEAD
 actualizaColumna :: Int -> Int -> [Int] -> [Int]
 actualizaColumna _ _ [] = []
 actualizaColumna 1 valor (_:xs) = valor:xs
@@ -107,20 +144,32 @@ actualizaFila :: Int -> Board -> [Int] -> Board
 actualizaFila _ [] _ = []
 actualizaFila 1 (_:xs) fila = fila : xs
 actualizaFila n (x:xs) fila = x : actualizaFila (n-1) xs fila
+=======
+-- | Actualiza una fila del tablero de Sudoku con un nuevo valor en la posición especificada.
+actualizarFila :: [Int] -> Int -> Int -> [Int]
+actualizarFila fila columna valor =
+    let (izquierda, _:derecha) = splitAt columna fila
+    in izquierda ++ [valor] ++ derecha
+>>>>>>> 3ecbf63a85ff607684821c392a841fb8588d1e2f
 
+
+-- | Verifica si un tablero de Sudoku está completamente resuelto.
 esResuelto :: Board -> Bool
 esResuelto tablero = 
     all (all (/= 0)) tablero && -- Verifica si todas las celdas están llenas 
     all sinRepeticiones (tablero ++ transpose tablero) && -- Verifica filas y columnas
     all sinRepeticiones (bloques tablero) -- Verifica bloques de 3x3
 
+-- | Verifica si una lista de enteros no contiene repeticiones.
 sinRepeticiones :: [Int] -> Bool
 sinRepeticiones xs = nub xs == xs
 
-chunksOf :: Int -> [a] -> [[a]]
+-- | Divide una lista en sublistas de tamaño dado.
+chunksOf :: Int -> [a] -> [[a]] 
 chunksOf _ [] = []
 chunksOf n xs = take n xs : chunksOf n (drop n xs)
 
+-- | Divide un tablero de Sudoku en bloques de 3x3.
 bloques :: Board -> [[Int]]
 bloques tablero = concatMap (agruparBloques . map (chunksOf 3)) (chunksOf 3 tablero)
     where
