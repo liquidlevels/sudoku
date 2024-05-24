@@ -165,3 +165,4 @@ planificar :-
 % Inicializar el sistema al inicio
 inicializar :-
     cargar_tareas.
+
